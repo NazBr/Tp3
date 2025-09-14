@@ -10,6 +10,7 @@ public class PlayerBehavior : MonoBehaviour
     public float speed = 5f;
     public float jumpforce = 5f;
 
+    private Animator animator;
     private Rigidbody rb;
     private bool grounded = true;
 
@@ -21,6 +22,7 @@ public class PlayerBehavior : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         mainCam = Camera.main; // on tente de récupérer la vraie caméra
+        animator = GetComponentInChildren<Animator>();
     }
 
     void Update()
@@ -70,6 +72,44 @@ public class PlayerBehavior : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Space) && grounded)
         {
             _jumpQueued = true;
+            animator.SetBool("isJumping", true);
+        }
+        if (Input.GetKeyUp(KeyCode.E))
+        {
+            animator.SetTrigger("doAttack");
+            
+        }
+        // --- Animation ---
+        if (_moveInput != Vector3.zero)
+        {
+            animator.SetBool("isRunning", true);
+
+            // Si clic droit ET avance (v > 0), orienter le joueur vers la direction caméra
+            if (Input.GetMouseButton(1) && Input.GetAxis("Vertical") > 0.01f)
+            {
+                Transform camT = mainCam ? mainCam.transform :
+                                  (cameraController ? cameraController.transform : null);
+
+                if (camT != null)
+                {
+                    Vector3 camPlanarForward = (transform.position - camT.position);
+                    camPlanarForward.y = 0f;
+                    if (camPlanarForward.sqrMagnitude > 0.0001f) camPlanarForward.Normalize();
+
+                    Quaternion targetRot = Quaternion.LookRotation(camPlanarForward, Vector3.up);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, 0.1f);
+                }
+            }
+            else
+            {
+                // Sinon, orientation selon le déplacement dans le repère monde
+                Quaternion targetRot = Quaternion.LookRotation(_moveInput, Vector3.up);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, 0.1f);
+            }
+        }
+        else
+        {
+            animator.SetBool("isRunning", false);
         }
     }
 
@@ -87,6 +127,7 @@ public class PlayerBehavior : MonoBehaviour
             rb.AddForce(Vector3.up * jumpforce, ForceMode.Impulse);
             grounded = false;
             _jumpQueued = false;
+            animator.SetBool("isJumping", false);
         }
     }
 
@@ -94,5 +135,5 @@ public class PlayerBehavior : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Ground"))
             grounded = true;
-    }
+    }  
 }
